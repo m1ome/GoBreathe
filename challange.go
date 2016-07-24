@@ -17,8 +17,8 @@ func main() {
 
 	count := len(words)
 	c := make(chan int, 30)
-	for i := range words {
-		go func(word string) {
+	for i, mul := range words {
+		go func(word string, mul int) {
 			length := len(word)
 			wordDistance := length
 
@@ -54,8 +54,8 @@ func main() {
 				}
 			}
 
-			c <- wordDistance
-		}(words[i])
+			c <- wordDistance * mul
+		}(i, mul)
 	}
 
 	totalDistane := 0
@@ -93,8 +93,8 @@ func loadVocabulary(filename string) map[int][]string {
 }
 
 // Load words file
-func loadWords(filename string) []string {
-	var words []string
+func loadWords(filename string) map[string]int {
+	words := make(map[string]int)
 	file, err := os.Open(filename)
 
 	if err != nil {
@@ -108,7 +108,12 @@ func loadWords(filename string) []string {
 		parts := strings.Fields(line)
 
 		for i := range parts {
-			words = append(words, strings.ToUpper(parts[i]))
+			word := strings.ToUpper(parts[i])
+			if _, ok := words[word]; ok {
+				words[word]++
+			} else {
+				words[word] = 1
+			}
 		}
 	}
 
