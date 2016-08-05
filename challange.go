@@ -12,8 +12,15 @@ import (
 
 // Reading vocabulary file
 func main() {
-	vocabulary := loadVocabulary("./vocabulary.txt")
+	vocabularyMatrix, vocabulary := loadVocabulary("./vocabulary.txt")
 	words := loadWords("./187")
+
+	// Remove words if they are in vocabulary
+	for i := range words {
+		if _, ok := vocabulary[i]; ok {
+			delete(words, i)
+		}
+	}
 
 	count := len(words)
 	c := make(chan int, 30)
@@ -23,7 +30,7 @@ func main() {
 			wordDistance := length
 
 			// Trying to find distance in main vocab
-			if slice, ok := vocabulary[length]; ok {
+			if slice, ok := vocabularyMatrix[length]; ok {
 				wordDistance = searchInSlice(slice, word)
 			}
 
@@ -34,12 +41,12 @@ func main() {
 					leftDistance := wordDistance
 					rightDistance := wordDistance
 
-					if leftSlice, ok := vocabulary[length-shoulder]; ok {
+					if leftSlice, ok := vocabularyMatrix[length-shoulder]; ok {
 						leftDistance = searchInSlice(leftSlice, word)
 					}
 
 					if leftDistance >= wordDistance {
-						if rightSlice, ok := vocabulary[length+shoulder]; ok {
+						if rightSlice, ok := vocabularyMatrix[length+shoulder]; ok {
 							rightDistance = searchInSlice(rightSlice, word)
 						}
 
@@ -67,8 +74,9 @@ func main() {
 }
 
 // Load vocabulary file
-func loadVocabulary(filename string) map[int][]string {
-	vocabulary := make(map[int][]string)
+func loadVocabulary(filename string) (map[int][]string, map[string]bool) {
+	vocabulary := make(map[string]bool)
+	vocabularyMatrix := make(map[int][]string)
 
 	file, err := os.Open(filename)
 
@@ -85,14 +93,15 @@ func loadVocabulary(filename string) map[int][]string {
 		word := strings.ToUpper(scanner.Text())
 		wordLength := len(word)
 
-		vocabulary[wordLength] = append(vocabulary[wordLength], word)
+		vocabularyMatrix[wordLength] = append(vocabularyMatrix[wordLength], word)
+		vocabulary[word] = true
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
 
-	return vocabulary
+	return vocabularyMatrix, vocabulary
 }
 
 // Load words file
@@ -108,7 +117,7 @@ func loadWords(filename string) map[string]int {
 	scanner := bufio.NewScanner(file)
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, 1024*1024)
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		parts := strings.Fields(line)
@@ -141,7 +150,7 @@ func searchInSlice(slice []string, word string) int {
 			wordDistance = tmp
 		}
 
-		if wordDistance == 0 {
+		if wordDistance == 1 {
 			break
 		}
 	}
